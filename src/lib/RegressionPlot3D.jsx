@@ -1,21 +1,20 @@
-import React, { useRef, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Text } from '@react-three/drei';
 import * as THREE from 'three';
 
 
-
-const generateData = (numPoints= 600)=> {
-  const data= [];
+const generateData = (numPoints = 600, coefficients = { x: 2, y: -1.5, intercept: 3 })=> {
+  const data = [];
   for (let i = 0; i < numPoints; i++) {
     const x = (Math.random() - 0.5) * 10;
     const y = (Math.random() - 0.5) * 10;
-    const baseZ = 2 * x - 1.5 * y + 3;
+    const baseZ = coefficients.x * x + coefficients.y * y + coefficients.intercept;
     const noise = (Math.random() - 0.5) * 2;
     const z = baseZ + noise;
     const classValue = baseZ > 3 ? 1 : 0;
     
-    data.push({ x, y, z, class: classValue});
+    data.push({ x, y, z, class: classValue });
   }
   return data;
 };
@@ -54,7 +53,7 @@ const DataPoints = ({ data }) => {
   );
 };
 
-const RegressionPlane= () => {
+const RegressionPlane = ({ coefficients }) => {
   const planeGeometry = useMemo(() => {
     const geometry = new THREE.PlaneGeometry(10, 10, 20, 20);
     const positions = geometry.attributes.position.array;
@@ -62,12 +61,12 @@ const RegressionPlane= () => {
     for (let i = 0; i < positions.length; i += 3) {
       const x = positions[i];
       const y = positions[i + 1];
-      positions[i + 2] = 2 * x - 1.5 * y + 3; // z = 2x - 1.5y + 3
+      positions[i + 2] = coefficients.x * x + coefficients.y * y + coefficients.intercept;
     }
     
     geometry.computeVertexNormals();
     return geometry;
-  }, []);
+  }, [coefficients]);
 
   return (
     <mesh geometry={planeGeometry}>
@@ -81,14 +80,13 @@ const RegressionPlane= () => {
   );
 };
 
-const GridAndAxes= () => {
+const GridAndAxes = () => {
   return (
     <>
       <gridHelper args={[10, 10]} rotation={[Math.PI / 2, 0, 0]} />
       <axesHelper args={[5]} />
       <Text
         position={[6, 0, 0]}
-        rotation={[0, 0, 0]}
         color="black"
         fontSize={0.5}
       >
@@ -96,7 +94,6 @@ const GridAndAxes= () => {
       </Text>
       <Text
         position={[0, 6, 0]}
-        rotation={[0, 0, 0]}
         color="black"
         fontSize={0.5}
       >
@@ -104,7 +101,6 @@ const GridAndAxes= () => {
       </Text>
       <Text
         position={[0, 0, 6]}
-        rotation={[0, 0, 0]}
         color="black"
         fontSize={0.5}
       >
@@ -114,11 +110,12 @@ const GridAndAxes= () => {
   );
 };
 
-const RegressionPlot3D= () => {
-  const data = useMemo(() => generateData(200), []);
+
+const RegressionPlot3D = ({ customData, coefficients = { x: 2, y: -1.5, intercept: 3 } }) => {
+  const data = useMemo(() => customData || generateData(200, coefficients), [customData, coefficients]);
 
   return (
-    <div className="w-full h-[600px] bg-gray-50 rounded-lg overflow-hidden">
+    <div className="w-full h-[600px] bg-gray-50 rounded-lg overflow-hidden relative">
       <Canvas
         camera={{ position: [8, 8, 8], fov: 50 }}
         shadows
@@ -126,7 +123,7 @@ const RegressionPlot3D= () => {
         <ambientLight intensity={0.5} />
         <pointLight position={[10, 10, 10]} intensity={1} />
         <DataPoints data={data} />
-        <RegressionPlane />
+        <RegressionPlane coefficients={coefficients} />
         <GridAndAxes />
         <OrbitControls enableDamping dampingFactor={0.05} />
       </Canvas>
@@ -147,6 +144,13 @@ const RegressionPlot3D= () => {
             <span className="text-sm">Regression Plane</span>
           </div>
         </div>
+      </div>
+      
+      <div className="absolute top-4 right-4 bg-white/90 p-4 rounded-lg shadow-lg">
+        <h3 className="text-sm font-semibold mb-2">Current Equation</h3>
+        <p className="text-sm font-mono">
+          Z = {coefficients.x}X {coefficients.y >= 0 ? '+' : ''} {coefficients.y}Y {coefficients.intercept >= 0 ? '+' : ''} {coefficients.intercept}
+        </p>
       </div>
     </div>
   );

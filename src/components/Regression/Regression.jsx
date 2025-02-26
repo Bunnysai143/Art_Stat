@@ -7,6 +7,7 @@ import GuessCorrelation from './GuessCorrelation';
 import ExploreRegression from './ExploreRegression';
 import MultipleRegression from './MultipleRegression';
 import Regressionmain from './Regressionmain';
+import LogisticRegressionDashboard from './LogisticRegressionDashboard';
 
 const visualizations = [
   { id: 'categorical', name: 'Association Between Two Categorical Variables (2x2 tables)', component: CategoricalAssociastion },
@@ -15,7 +16,7 @@ const visualizations = [
   { id: 'explore-regression', name: 'Explore Linear Regression', component: ExploreRegression },
   { id: 'multiple', name: 'Multiple Linear Regression', component: MultipleRegression },
   { id: 'exponential', name: 'Exponential Regression', component: Regressionmain },
-  { id: 'logistic', name: 'Logistic Regression', component: Regressionmain }
+  { id: 'logistic', name: 'Logistic Regression', component: LogisticRegressionDashboard }
 ];
 
 function Regression() {
