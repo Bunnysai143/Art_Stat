@@ -1,162 +1,149 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import * as d3 from 'd3';
 
 
-const SigmoidFunction= ({ data }) => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  
-  // Sigmoid function
-  const sigmoid = (z) => 1 / (1 + Math.exp(-z));
-  
+
+const SigmoidFunction = ({ data }) => {
+  const svgRef = useRef(null);
+  const [sliderValue, setSliderValue] = useState(0);
+
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    
-    // Set canvas dimensions
-    const width = canvas.width;
-    const height = canvas.height;
-    
-    // Clear canvas
-    ctx.clearRect(0, 0, width, height);
-    
-    // Define range for z
-    const minZ = -10;
-    const maxZ = 10;
-    
-    // Scale functions
-    const scaleX = (z) => (z - minZ) / (maxZ - minZ) * width;
-    const scaleY = (p) => height - p * height;
-    
-    // Draw grid
-    ctx.strokeStyle = '#e5e7eb';
-    ctx.lineWidth = 1;
-    
-    // Vertical grid lines
-    for (let z = Math.floor(minZ); z <= Math.ceil(maxZ); z += 2) {
-      ctx.beginPath();
-      ctx.moveTo(scaleX(z), 0);
-      ctx.lineTo(scaleX(z), height);
-      ctx.stroke();
-    }
-    
-    // Horizontal grid lines
-    for (let p = 0; p <= 1; p += 0.1) {
-      ctx.beginPath();
-      ctx.moveTo(0, scaleY(p));
-      ctx.lineTo(width, scaleY(p));
-      ctx.stroke();
-    }
-    
-    // Draw axes
-    ctx.strokeStyle = '#9ca3af';
-    ctx.lineWidth = 2;
-    
-    // X-axis (z-axis)
-    ctx.beginPath();
-    ctx.moveTo(0, scaleY(0));
-    ctx.lineTo(width, scaleY(0));
-    ctx.stroke();
-    
-    // Y-axis (probability axis)
-    ctx.beginPath();
-    ctx.moveTo(scaleX(0), 0);
-    ctx.lineTo(scaleX(0), height);
-    ctx.stroke();
-    
-    // Draw sigmoid function
-    ctx.strokeStyle = '#3b82f6';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    
-    for (let x = 0; x <= width; x++) {
-      const z = minZ + (x / width) * (maxZ - minZ);
-      const p = sigmoid(z);
+    const svg = d3.select(svgRef.current);
+    if (!svg) return;
+
+    // Clear previous content
+    svg.selectAll("*").remove();
+
+    const margin = { top: 40, right: 40, bottom: 60, left: 60 };
+    const width = 600 - margin.left - margin.right;
+    const height = 400 - margin.top - margin.bottom;
+
+    const chartGroup = svg
+      .attr("width", width + margin.left + margin.right)
+      .attr("height", height + margin.top + margin.bottom)
+      .append("g")
+      .attr("transform", `translate(${margin.left},${margin.top})`);
+
+    // Create scales
+    const x = d3.scaleLinear()
+      .domain([-10, 10])
+      .range([0, width]);
+
+    const y = d3.scaleLinear()
+      .domain([0, 1])
+      .range([height, 0]);
+
+    // Add axes
+    chartGroup.append("g")
+      .attr("transform", `translate(0,${height})`)
+      .call(d3.axisBottom(x));
+
+    chartGroup.append("g")
+      .call(d3.axisLeft(y));
+
+    // Add labels
+    chartGroup.append("text")
+      .attr("text-anchor", "middle")
+      .attr("x", width/2)
+      .attr("y", height + margin.bottom - 10)
+      .text("Input (z)");
+
+    chartGroup.append("text")
+      .attr("text-anchor", "middle")
+      .attr("transform", "rotate(-90)")
+      .attr("y", -margin.left + 20)
+      .attr("x", -height/2)
+      .text("Probability");
+
+    // Generate sigmoid curve data
+    const sigmoid = (x) => 1 / (1 + Math.exp(-(x + sliderValue)));
+    const points = d3.range(-10, 10, 0.1).map(x => ({
+      x: x,
+      y: sigmoid(x)
+    }));
+
+    // Add the sigmoid curve
+    const line = d3.line()
+      .x(d => x(d.x))
+      .y(d => y(d.y));
+
+    chartGroup.append("path")
+      .datum(points)
+      .attr("fill", "none")
+      .attr("stroke", "steelblue")
+      .attr("stroke-width", 2)
+      .attr("d", line);
+
+    // Add interactive point
+    const interactivePoint = chartGroup.append("circle")
+      .attr("r", 5)
+      .attr("fill", "red");
+
+    // Add vertical and horizontal lines for point
+    const vLine = chartGroup.append("line")
+      .attr("stroke", "red")
+      .attr("stroke-dasharray", "4");
+
+    const hLine = chartGroup.append("line")
+      .attr("stroke", "red")
+      .attr("stroke-dasharray", "4");
+
+    // Update point position based on slider
+    const updatePoint = () => {
+      const xPos = x(sliderValue);
+      const yPos = y(sigmoid(sliderValue));
       
-      if (x === 0) {
-        ctx.moveTo(x, scaleY(p));
-      } else {
-        ctx.lineTo(x, scaleY(p));
-      }
-    }
-    
-    ctx.stroke();
-    
-    // Draw decision threshold at z=0, p=0.5
-    ctx.strokeStyle = '#10b981';
-    ctx.lineWidth = 2;
-    ctx.setLineDash([5, 5]);
-    
-    // Vertical line at z=0
-    ctx.beginPath();
-    ctx.moveTo(scaleX(0), 0);
-    ctx.lineTo(scaleX(0), height);
-    ctx.stroke();
-    
-    // Horizontal line at p=0.5
-    ctx.beginPath();
-    ctx.moveTo(0, scaleY(0.5));
-    ctx.lineTo(width, scaleY(0.5));
-    ctx.stroke();
-    
-    ctx.setLineDash([]);
-    
-    // Draw labels
-    ctx.fillStyle = '#000000';
-    ctx.font = '14px Arial';
-    
-    // Z-axis label
-    ctx.fillText('z = w₁x + w₂y + bias', width - 180, height - 10);
-    
-    // Probability axis label
-    ctx.save();
-    ctx.translate(15, height / 2);
-    ctx.rotate(-Math.PI / 2);
-    ctx.fillText('Probability p(y=1)', 0, 0);
-    ctx.restore();
-    
-    // Draw key points
-    const drawPoint = (z, label) => {
-      const x = scaleX(z);
-      const y = scaleY(sigmoid(z));
-      
-      ctx.fillStyle = '#3b82f6';
-      ctx.beginPath();
-      ctx.arc(x, y, 5, 0, Math.PI * 2);
-      ctx.fill();
-      
-      ctx.fillStyle = '#000000';
-      ctx.fillText(label, x + 10, y - 10);
-      ctx.fillText(`p=${sigmoid(z).toFixed(2)}`, x + 10, y + 10);
+      interactivePoint
+        .attr("cx", xPos)
+        .attr("cy", yPos);
+
+      vLine
+        .attr("x1", xPos)
+        .attr("x2", xPos)
+        .attr("y1", height)
+        .attr("y2", yPos);
+
+      hLine
+        .attr("x1", 0)
+        .attr("x2", xPos)
+        .attr("y1", yPos)
+        .attr("y2", yPos);
     };
-    
-    // Draw point at z=0
-    drawPoint(0, 'z=0');
-    
-    // Draw point at z=2
-    drawPoint(2, 'z=2');
-    
-    // Draw point at z=-2
-    drawPoint(-2, 'z=-2');
-    
-  }, [data]);
-  
+
+    updatePoint();
+
+  }, [sliderValue, data]);
+
   return (
-    <div className="h-full flex flex-col">
-      <h3 className="text-lg font-medium mb-4">Sigmoid Function</h3>
-      <div className="flex-grow bg-white rounded-lg overflow-hidden">
-        <canvas 
-          ref={canvasRef} 
-          width={800} 
-          height={500} 
-          className="w-full h-full"
-        />
-      </div>
-      <div className="mt-4 text-sm text-gray-600">
-        <p>The sigmoid function maps any real-valued number to a probability between 0 and 1.</p>
-        <p>For logistic regression, z = w₁x + w₂y + bias is the linear combination of features.</p>
-        <p>The decision boundary occurs at z=0, where the probability is exactly 0.5.</p>
+    <div className="flex flex-col items-center space-y-4">
+      <div className="w-full max-w-2xl bg-white p-6 rounded-lg shadow">
+        <h3 className="text-lg font-semibold mb-4">Sigmoid Function Visualization</h3>
+        <svg ref={svgRef}></svg>
+        <div className="mt-4">
+          <label className="block text-sm font-medium text-gray-700">
+            Input Value (z): {sliderValue.toFixed(2)}
+          </label>
+          <input
+            type="range"
+            min="-10"
+            max="10"
+            step="0.1"
+            value={sliderValue}
+            onChange={(e) => setSliderValue(parseFloat(e.target.value))}
+            className="w-full mt-2"
+          />
+        </div>
+        <div className="mt-4 text-sm text-gray-600">
+          <h4 className="font-medium mb-2">How it works:</h4>
+          <p>The sigmoid function maps any input value to a probability between 0 and 1. It's defined as:</p>
+          <p className="my-2 font-mono">σ(z) = 1 / (1 + e^(-z))</p>
+          <p>Move the slider to see how different input values (z) are transformed into probabilities.</p>
+          <ul className="list-disc list-inside mt-2">
+            <li>Large negative inputs approach 0</li>
+            <li>Large positive inputs approach 1</li>
+            <li>Input of 0 gives output of 0.5</li>
+          </ul>
+        </div>
       </div>
     </div>
   );
